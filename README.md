@@ -23,6 +23,16 @@
 
 ---
 
+## 👨‍💻 About the Creator
+
+**[AlphaDevelopmental](https://alphadevelopmental.netlify.app/)** — Developer & Ethical Hacker
+
+This lab was created as part of my mission to teach **practical security through hands-on learning**. I'm passionate about blending creativity and security to craft secure, educational experiences.
+
+🌐 **[Visit My Portfolio](https://alphadevelopmental.netlify.app/)** | 📖 **[Learn More About Me](./ABOUT_CREATOR.md)** | 🐙 **[GitHub](https://github.com/AlphaDevelopmental)**
+
+---
+
 ## What You'll Learn
 
 By the end of this lab you will be able to:
@@ -378,6 +388,17 @@ Solutions are maintained in a **private repository** — contact the lab author 
 ## License
 
 MIT — use it in your courses, adapt it, fork it.
+
+---
+
+## About the Author
+
+**Created by [AlphaDevelopmental](https://alphadevelopmental.netlify.app/)** — Developer & Ethical Hacker
+
+This lab is part of my mission to blend **creativity and security**, crafting educational resources that are both functional and fortified.
+
+🔗 **Portfolio:** [alphadevelopmental.netlify.app](https://alphadevelopmental.netlify.app/)  
+🐙 **GitHub:** [github.com/AlphaDevelopmental](https://github.com/AlphaDevelopmental)
 
 ---
 

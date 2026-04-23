@@ -9,6 +9,7 @@ This file helps you navigate the CORS & SOP Lab repository and find what you nee
 | **README.md** | Main documentation | Everyone (start here) |
 | **GETTING_STARTED.md** | Setup and first steps | New users |
 | **EXPLOITATION_GUIDE.md** | Step-by-step vulnerability exploitation | Learners |
+| **ABOUT_CREATOR.md** | About AlphaDevelopmental & philosophy | Everyone |
 | **CONTRIBUTING.md** | How to contribute | Contributors |
 | **CODE_OF_CONDUCT.md** | Community standards | Everyone |
 | **LICENSE** | MIT License | Legal |
@@ -222,4 +223,13 @@ Want to improve the lab? See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-**Happy learning!** 🎓 Start with [GETTING_STARTED.md](GETTING_STARTED.md)
+## 🔗 Created By
+
+**[AlphaDevelopmental](https://alphadevelopmental.netlify.app/)** — Developer & Ethical Hacker
+
+This lab is part of my educational mission to teach real-world security concepts through hands-on learning. For more projects and resources, visit my portfolio.
+
+---
+
+**Happy learning!** 🎓 Start with [GETTING_STARTED.md](GETTING_STARTED.md)  
+**🌐 [Visit AlphaDevelopmental Portfolio](https://alphadevelopmental.netlify.app/)**

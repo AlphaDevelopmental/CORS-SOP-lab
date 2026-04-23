@@ -237,3 +237,11 @@ By completing this lab, you will be able to:
 5. Aim for the 50-point bonus by passing all hardening tests
 
 Good luck! 🚀
+
+---
+
+## 🔙 Navigation & Links
+
+**← [Back to README](./README.md)**  
+**← [Back to Index](./INDEX.md)**  
+**🌐 [AlphaDevelopmental Portfolio](https://alphadevelopmental.netlify.app/)**

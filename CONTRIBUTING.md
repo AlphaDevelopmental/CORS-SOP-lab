@@ -67,4 +67,10 @@ npm run test:01 -- --testNamePattern="Bug #1"
 
 ---
 
+## 🔙 Navigation
+
+**← [Back to README](./README.md)**  
+**← [Back to Index](./INDEX.md)**  
+**🌐 [AlphaDevelopmental Portfolio](https://alphadevelopmental.netlify.app/)**
+
 Thank you for helping make this lab better! 🙏
