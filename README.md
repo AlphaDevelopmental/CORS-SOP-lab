@@ -19,6 +19,8 @@
 - ✅ **Docker Setup** — Runs anywhere in minutes
 - ✅ **200 Points Scoring System** — Track your learning progress
 
+**👉 [Start with GETTING_STARTED.md](./GETTING_STARTED.md) if this is your first time!**
+
 ---
 
 ## What You'll Learn
@@ -60,12 +62,14 @@ enforces SOP between them — no `/etc/hosts` tricks needed.
 
 ## Quick Start
 
+**New here?** Start with [GETTING_STARTED.md](./GETTING_STARTED.md) for a complete setup guide.
+
 **Prerequisites:** Docker Desktop (or Docker Engine + Compose), Node.js 18+
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com//cors-sop-lab
-cd cors-sop-lab
+git clone https://github.com/AlphaDevelopmental/CORS-SOP-lab.git
+cd CORS-SOP-lab
 
 # 2. Start all three servers
 docker compose up --build
@@ -90,6 +94,8 @@ npm run test:01   # Core misconfigurations
 npm run test:02   # Bypass techniques
 npm run test:03   # Preflight & advanced
 ```
+
+**Full Navigation:** See [INDEX.md](./INDEX.md) for repository structure and quick reference.
 
 ---
 
