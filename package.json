@@ -1,0 +1,22 @@
+{
+  "name": "cors-sop-lab",
+  "version": "1.0.0",
+  "description": "CORS & SOP Misconfiguration Lab — BankAPI (beginner to intermediate)",
+  "scripts": {
+    "test":    "jest --runInBand --forceExit",
+    "test:00": "jest exercises/00-sop-fundamentals --runInBand --forceExit --verbose",
+    "test:01": "jest exercises/01-core-misconfigs   --runInBand --forceExit --verbose",
+    "test:02": "jest exercises/02-bypasses          --runInBand --forceExit --verbose",
+    "test:03": "jest exercises/03-preflight-advanced --runInBand --forceExit --verbose"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "node-fetch": "^3.3.2"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 10000,
+    "verbose": true,
+    "globalSetup": "./jest.setup.js"
+  }
+}

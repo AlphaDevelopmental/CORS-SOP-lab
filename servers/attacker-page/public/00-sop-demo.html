@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ex 00 — SOP Fundamentals</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Courier New', monospace; background: #0a0e1a; color: #e0e6f0; padding: 2rem; }
+    h1 { color: #8be9fd; margin-bottom: 0.25rem; }
+    .subtitle { color: #6272a4; font-size: 0.85rem; margin-bottom: 2rem; }
+    .concept {
+      background: #111827;
+      border: 1px solid #1f2d3d;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .concept h2 { font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    .concept p { font-size: 0.82rem; color: #94a3b8; line-height: 1.6; margin-bottom: 0.75rem; }
+    .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .panel { border-radius: 6px; padding: 1rem; }
+    .panel.blocked { background: #1a0a0a; border: 1px solid #ff3c3c44; }
+    .panel.allowed { background: #0a1a0a; border: 1px solid #3fb95044; }
+    .panel h3 { font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .panel h3.red { color: #ff6b6b; }
+    .panel h3.green { color: #3fb950; }
+    .output {
+      background: #0d1117;
+      border-radius: 4px;
+      padding: 0.75rem;
+      font-size: 0.75rem;
+      min-height: 80px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-top: 0.5rem;
+      color: #aaa;
+    }
+    .output.error { color: #ff6b6b; }
+    .output.success { color: #3fb950; }
+    button {
+      background: #1f2d3d;
+      border: 1px solid #30363d;
+      color: #cdd6f4;
+      padding: 0.4rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-family: inherit;
+    }
+    button:hover { background: #2d3f52; }
+    .origin-box {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.78rem;
+      color: #f1fa8c;
+      margin-bottom: 0.75rem;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; margin-top: 0.5rem; }
+    th { background: #161b22; color: #8b949e; padding: 0.4rem 0.6rem; text-align: left; border: 1px solid #30363d; }
+    td { padding: 0.4rem 0.6rem; border: 1px solid #21262d; }
+    .tag { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.7rem; }
+    .tag.same { background: #3fb95022; color: #3fb950; border: 1px solid #3fb95033; }
+    .tag.cross { background: #ff6b6b22; color: #ff6b6b; border: 1px solid #ff6b6b33; }
+    .tag.blocked { background: #ff6b6b22; color: #ff6b6b; }
+    .tag.allowed { background: #3fb95022; color: #3fb950; }
+  </style>
+</head>
+<body>
+  <h1>Exercise 00 — Same-Origin Policy Fundamentals</h1>
+  <div class="subtitle">Observation only. No exploits. Understand what SOP protects before you break it.</div>
+
+  <!-- CONCEPT 1: What is an origin? -->
+  <div class="concept">
+    <h2>📐 What defines an origin?</h2>
+    <p>An origin is the combination of <strong>scheme + host + port</strong>. All three must match for two URLs to be considered same-origin. If any one differs, they are cross-origin and SOP applies.</p>
+    <div class="origin-box">Your current origin: <span id="current-origin"></span></div>
+
+    <table>
+      <tr>
+        <th>URL</th>
+        <th>Scheme</th>
+        <th>Host</th>
+        <th>Port</th>
+        <th>vs localhost:3002</th>
+      </tr>
+      <tr>
+        <td>http://localhost:3002/page</td>
+        <td>http</td><td>localhost</td><td>3002</td>
+        <td><span class="tag same">SAME ORIGIN</span></td>
+      </tr>
+      <tr>
+        <td>http://localhost:3000/api</td>
+        <td>http</td><td>localhost</td><td><strong>3000</strong></td>
+        <td><span class="tag cross">CROSS ORIGIN — port differs</span></td>
+      </tr>
+      <tr>
+        <td>https://localhost:3002/page</td>
+        <td><strong>https</strong></td><td>localhost</td><td>3002</td>
+        <td><span class="tag cross">CROSS ORIGIN — scheme differs</span></td>
+      </tr>
+      <tr>
+        <td>http://bank.local:3002/page</td>
+        <td>http</td><td><strong>bank.local</strong></td><td>3002</td>
+        <td><span class="tag cross">CROSS ORIGIN — host differs</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- CONCEPT 2: SOP in action -->
+  <div class="concept">
+    <h2>🔒 SOP in action — same-origin vs cross-origin fetch</h2>
+    <p>Click both buttons. The same-origin request reads the response. The cross-origin request is blocked by your browser. Both requests reach the network — SOP only controls whether JavaScript can <em>read</em> the response.</p>
+
+    <div class="panel-grid">
+      <div class="panel allowed">
+        <h3 class="green">✅ Same-origin fetch (allowed)</h3>
+        <p style="font-size:0.75rem;color:#94a3b8">From: localhost:3002 → To: localhost:3002/health<br>Same port = same origin = response readable</p>
+        <button onclick="doSameOrigin()">Run same-origin fetch</button>
+        <div class="output success" id="same-output">Waiting...</div>
+      </div>
+      <div class="panel blocked">
+        <h3 class="red">❌ Cross-origin fetch (blocked by SOP)</h3>
+        <p style="font-size:0.75rem;color:#94a3b8">From: localhost:3002 → To: localhost:3000/api/safe<br>Different port = cross-origin = browser blocks read</p>
+        <button onclick="doCrossOrigin()">Run cross-origin fetch (no CORS headers)</button>
+        <div class="output error" id="cross-output">Waiting...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONCEPT 3: CORS unlocks cross-origin reads -->
+  <div class="concept">
+    <h2>🔑 CORS unlocks cross-origin reads (selectively)</h2>
+    <p>CORS is the browser's mechanism for a server to say: "I permit <em>this specific origin</em> to read my responses." It is opt-in. Without it, SOP blocks all cross-origin reads. With it, only explicitly allowed origins get access.</p>
+    <p>The secure endpoint below has correct CORS — only <code>localhost:3001</code> is allowed. Watch what happens when <em>we</em> (localhost:3002) try to read it.</p>
+
+    <button onclick="doCorsBlocked()">Fetch /api/safe from localhost:3002 (should be blocked)</button>
+    <div class="output error" id="cors-blocked-output">Waiting...</div>
+  </div>
+
+  <!-- CONCEPT 4: Preflight -->
+  <div class="concept">
+    <h2>✈️ Preflights — when the browser asks permission first</h2>
+    <p>For "non-simple" requests (custom headers, PUT/DELETE, etc.), the browser sends an OPTIONS request first — the preflight — to ask if the real request is allowed. Only if the server approves does the browser send the actual request.</p>
+    <p>Simple requests (GET/POST with standard headers) skip the preflight. That's why many CORS bugs are exploitable with a plain GET.</p>
+
+    <button onclick="doPreflightDemo()">Send a PUT request (triggers preflight)</button>
+    <div class="output" id="preflight-output">Waiting... (watch Network tab in DevTools for the OPTIONS request)</div>
+  </div>
+
+  <script>
+    document.getElementById('current-origin').textContent = window.location.origin;
+
+    async function doSameOrigin() {
+      const el = document.getElementById('same-output');
+      el.className = 'output';
+      el.textContent = 'Fetching http://localhost:3002/health...\n';
+      try {
+        const res = await fetch('/health');
+        const data = await res.json();
+        el.className = 'output success';
+        el.textContent = '✅ Success! Response readable:\n' + JSON.stringify(data, null, 2);
+      } catch (err) {
+        el.className = 'output error';
+        el.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    async function doCrossOrigin() {
+      const el = document.getElementById('cross-output');
+      el.className = 'output error';
+      el.textContent = 'Fetching http://localhost:3000/api/safe (no CORS headers on that route from us)...\n';
+      try {
+        // /api/safe uses corsSecure which only allows localhost:3001
+        const res = await fetch('http://localhost:3000/api/safe', { credentials: 'include' });
+        const data = await res.json();
+        el.className = 'output success';
+        el.textContent = '⚠️  Unexpectedly succeeded:\n' + JSON.stringify(data, null, 2);
+      } catch (err) {
+        el.className = 'output error';
+        el.textContent = '❌ Blocked by browser SOP/CORS:\n' + err.message +
+          '\n\nThis is correct behaviour. The server did NOT send\nAccess-Control-Allow-Origin for our origin (localhost:3002),\nso the browser refused to let us read the response.\n\n' +
+          'Note: the REQUEST still reached the server — SOP only\nblocks reading the response, not sending the request.';
+      }
+    }
+
+    async function doCorsBlocked() {
+      const el = document.getElementById('cors-blocked-output');
+      el.textContent = 'Fetching /api/safe from our origin (localhost:3002)...\n';
+      try {
+        const res = await fetch('http://localhost:3000/api/safe', { credentials: 'include' });
+        el.className = 'output success';
+        el.textContent = '⚠️ We got through! CORS is misconfigured.\n' + JSON.stringify(await res.json(), null, 2);
+      } catch (err) {
+        el.className = 'output error';
+        el.textContent = '✅ Correctly blocked:\n' + err.message +
+          '\n\nThe CORS allowlist on /api/safe only permits localhost:3001.\nOur origin (localhost:3002) is not in the list.\nThe browser correctly blocked the read.';
+      }
+    }
+
+    async function doPreflightDemo() {
+      const el = document.getElementById('preflight-output');
+      el.textContent = 'Sending PUT request to /api/settings — watch for OPTIONS in DevTools Network tab...\n';
+      try {
+        const res = await fetch('http://localhost:3000/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ theme: 'dark' }),
+          credentials: 'include',
+        });
+        const data = await res.json();
+        el.className = 'output success';
+        el.textContent = 'Preflight passed + real request succeeded:\n' + JSON.stringify(data, null, 2) +
+          '\n\nOpen DevTools → Network and look for:\n  1. OPTIONS /api/settings (the preflight)\n  2. PUT /api/settings (the real request)\nNotice the Max-Age header on the OPTIONS response — that\'s Bug #7.';
+      } catch (err) {
+        el.className = 'output error';
+        el.textContent = 'Blocked:\n' + err.message;
+      }
+    }
+  </script>
+</body>
+</html>

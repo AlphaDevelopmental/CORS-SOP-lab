@@ -1,0 +1,113 @@
+version: '3.9'
+
+# ─── CORS/SOP Lab — Docker Compose ───────────────────────────────────────────
+#
+# Three containers, one network:
+#
+#   victim-api        → http://localhost:3000   (the vulnerable bank API)
+#   trusted-subdomain → http://localhost:3001   (reports.bank.local simulation)
+#   attacker-page     → http://localhost:3002   (open this in your browser)
+#
+# From the browser's perspective, localhost:3000 and localhost:3002 are
+# CROSS-ORIGIN (different ports = different origin). No /etc/hosts needed.
+#
+# Usage:
+#   docker compose up --build        # start all three servers
+#   docker compose down              # stop and remove containers
+#   docker compose logs victim-api   # tail a specific server's logs
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── 1. VICTIM API ────────────────────────────────────────────────────────────
+  # The vulnerable bank API. Contains all 9 CORS/SOP bugs.
+  # Students read cors-config.js, exploit the bugs, then patch them here.
+  victim-api:
+    build:
+      context: ./servers/victim-api
+      dockerfile: Dockerfile
+    container_name: cors-victim-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=lab
+      - PORT=3000
+      # Trusted origins — used by cors-config.js allowlists
+      - TRUSTED_ORIGIN=http://localhost:3001
+      - TRUSTED_SUBDOMAIN_SUFFIX=.bank.local
+    networks:
+      cors-lab-net:
+        aliases:
+          - bank.local           # internal DNS alias (used by other containers)
+    volumes:
+      # Live-reload: students edit cors-config.js and changes apply immediately
+      - ./servers/victim-api:/app
+      - /app/node_modules        # preserve container's node_modules
+    command: node --watch app.js
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── 2. TRUSTED SUBDOMAIN ─────────────────────────────────────────────────────
+  # Simulates reports.bank.local — a legitimate subdomain the victim API trusts.
+  # Used in Exercise 02 Bug #6 (subdomain wildcard pivot):
+  #   if an attacker compromises this server, they inherit the trusted-origin
+  #   relationship and can reach privileged API endpoints.
+  trusted-subdomain:
+    build:
+      context: ./servers/trusted-subdomain
+      dockerfile: Dockerfile
+    container_name: cors-trusted-subdomain
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=lab
+      - PORT=3001
+      - VICTIM_API_URL=http://victim-api:3000
+    networks:
+      cors-lab-net:
+        aliases:
+          - reports.bank.local   # internal DNS alias
+    volumes:
+      - ./servers/trusted-subdomain:/app
+      - /app/node_modules
+    command: node --watch app.js
+    depends_on:
+      victim-api:
+        condition: service_healthy
+
+  # ── 3. ATTACKER PAGE ─────────────────────────────────────────────────────────
+  # Serves the browser-based exploit HTML pages.
+  # Open http://localhost:3002 in Chrome/Firefox to run live exploits.
+  # Each page makes cross-origin requests to localhost:3000 and shows
+  # exactly what the browser sends/blocks/receives.
+  attacker-page:
+    build:
+      context: ./servers/attacker-page
+      dockerfile: Dockerfile
+    container_name: cors-attacker-page
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=lab
+      - PORT=3002
+      - VICTIM_API_URL=http://localhost:3000   # browser-side URL (host perspective)
+    networks:
+      cors-lab-net:
+        aliases:
+          - attacker.evil.local
+    volumes:
+      - ./servers/attacker-page:/app
+      - /app/node_modules
+    command: node --watch app.js
+    depends_on:
+      victim-api:
+        condition: service_healthy
+
+# ─── NETWORK ──────────────────────────────────────────────────────────────────
+networks:
+  cors-lab-net:
+    driver: bridge
+    name: cors-lab-net

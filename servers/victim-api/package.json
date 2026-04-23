@@ -1,0 +1,14 @@
+{
+  "name": "cors-lab-victim-api",
+  "version": "1.0.0",
+  "description": "BankAPI — the vulnerable victim server",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "express": "^4.18.2"
+  }
+}

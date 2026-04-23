@@ -1,0 +1,14 @@
+{
+  "name": "cors-lab-trusted-subdomain",
+  "version": "1.0.0",
+  "description": "reports.bank.local — trusted subdomain server",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2"
+  }
+}
