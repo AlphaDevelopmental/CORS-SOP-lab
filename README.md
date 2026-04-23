@@ -383,7 +383,7 @@ MIT — use it in your courses, adapt it, fork it.
 
 ## GitHub Topics
 
-When viewing this repo on GitHub, the following topics should be added for discoverability:
+When viewing this repo on GitHub, the following topics are added for discoverability:
 - `cors`
 - `security-lab`
 - `web-security`
@@ -394,5 +394,3 @@ When viewing this repo on GitHub, the following topics should be added for disco
 - `ctf`
 - `vulnerability-research`
 - `browser-security`
-
-**To add topics:** Click "⚙️ About" section on the repo homepage → add the tags above.
