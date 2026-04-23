@@ -1,9 +1,23 @@
 # 🌐 CORS & SOP Misconfiguration Lab
 ### BankAPI — A hands-on lab for understanding and exploiting CORS misconfigurations
 
+**Keywords:** CORS, Same-Origin Policy, SOP, Web Security, Security Lab, CORS Bypass, XSS, Cross-Origin, Browser Security, API Security, Preflight, Private Network Access, Security Training
+
 > **Target audience:** Junior security engineers learning web vulnerability classes systematically  
 > **Prior knowledge required:** Basic HTTP (requests, headers, status codes)  
 > **CORS/SOP prior knowledge:** None — Exercise 00 teaches it from scratch
+
+---
+
+## 🎯 Quick Summary
+
+**CORS & SOP Misconfiguration Lab** is a **hands-on security training lab** featuring 9 real-world CORS vulnerabilities found in production APIs. Build a BankAPI from scratch, learn how each vulnerability works, exploit it with browser-based attacks, write the fixes, and verify with automated tests.
+
+- ✅ **9 Exploitable Vulnerabilities** — Real production bugs
+- ✅ **Browser + Test Coverage** — Learn both ways
+- ✅ **Step-by-Step Guides** — Every bug documented
+- ✅ **Docker Setup** — Runs anywhere in minutes
+- ✅ **200 Points Scoring System** — Track your learning progress
 
 ---
 
@@ -358,3 +372,21 @@ Solutions are maintained in a **private repository** — contact the lab author 
 ## License
 
 MIT — use it in your courses, adapt it, fork it.
+
+---
+
+## GitHub Topics
+
+When viewing this repo on GitHub, the following topics should be added for discoverability:
+- `cors`
+- `security-lab`
+- `web-security`
+- `cors-bypass`
+- `same-origin-policy`
+- `api-security`
+- `security-training`
+- `ctf`
+- `vulnerability-research`
+- `browser-security`
+
+**To add topics:** Click "⚙️ About" section on the repo homepage → add the tags above.
